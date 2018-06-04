@@ -72,8 +72,8 @@ static void HoG(const double *__RESTRICT pixels, const size_t nb_bins,
 
   const int orient = unsigned_dirs ? 1 : 2;
 
-  const size_t img_width = img_size[1];
-  const size_t img_height = img_size[0];
+  const size_t img_width = img_size[1]; 
+  const size_t img_height = img_size[0]; 
 
   const int hist1 = 2 + ceil(-0.5 + img_height / cwidth);
   const int hist2 = 2 + ceil(-0.5 + img_width / cwidth);
@@ -91,8 +91,8 @@ static void HoG(const double *__RESTRICT pixels, const size_t nb_bins,
 
   // Calculate gradients (zero padding)
 
-  for (size_t y = 0; y < img_height; y++) {
-    for (size_t x = 0; x < img_width; x++) {
+  for (size_t x = 0; x < img_width; x++) {
+    for (size_t y = 0; y < img_height; y++) {
       if (grayscale) {
         if (x == 0)
           dx[0] = pixels[y + (x + 1) * stride];
