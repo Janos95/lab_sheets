@@ -39,47 +39,35 @@ static PyObject* hogpy_hog(PyObject* self, PyObject* args)
     PyArrayObject *np_arr = reinterpret_cast<PyArrayObject*>(arr);
 
     std::vector<size_t> img_size(PyArray_DIMS(np_arr), PyArray_DIMS(np_arr)+PyArray_NDIM(np_arr));
-    std::vector<size_t> strides(PyArray_STRIDES(np_arr), PyArray_STRIDES(np_arr)+PyArray_NDIM(np_arr));
-    if(img_size.size() != 2 || img_size.size() != 3)
+    if(img_size.size() != 2)
     {
+    	char message[100*sizeof(char)];
+    	snprintf(message, sizeof(message)
+    		, "Your array has %d dimensions (needs to be 2)!", (int)img_size.size());
+    	PyErr_SetString(PyExc_RuntimeError, message);
     	Py_XDECREF(arr);
     	return NULL;
     }
-    if(img_size.size() == 2)
-    {
-    	img_size.insert(img_size.begin(), 1);
-    	strides.insert(strides.begin(), 0); //insert dummy stride
-    }
-    
+  
     const double* arr_data = (const double*)PyArray_DATA(np_arr);
 
-    printf("The strides are %d %d %d\n",strides[0]/8, strides[1]/8, strides[2]/8);
-
-
     const size_t num_features = getNumFeatures(img_size.data(), nb_bins, cwidth, block_size);
-    npy_intp out_dims(num_features*img_size[0]);
+    npy_intp out_dims(num_features);
     PyObject* oarr = PyArray_SimpleNew(1, &out_dims, NPY_DOUBLE);
+    if(!oarr)
+    {
+    	char message[50*sizeof(char)];
+    	snprintf(message, sizeof(message), "Could not allocate %d bytes.", (int)out_dims*sizeof(double));
+    	PyErr_SetString(PyExc_RuntimeError, message);
+    	Py_XDECREF(arr);
+    	return NULL;
+    }
     PyArrayObject *np_oarr = reinterpret_cast<PyArrayObject*>(oarr);
     double* oarr_data = (double*)PyArray_DATA(np_oarr);
-    
-    #pragma omp parallel for
-    for (size_t i = 0; i < img_size[0]; ++i)
-	{
-    	HoG(arr_data+i*strides[2]/sizeof(double), nb_bins, cwidth, block_size, unsigned_dirs, clip_val,
-            img_size.data(), strides[1]/sizeof(double),
-            oarr_data+i*num_features, true);
-	} 
-
-	//reshape the array if necessary
-	if(img_size[0] > 1)
-	{
-		PyObject* oarr_reshaped = PyArray_Newshape(
-			oarr, PyArray_Dims* newshape, NPY_FORTRANORDER);
-		Py_DECREF(arr);
-    	Py_INCREF(oarr_reshaped);
-    	return oarr_reshaped;
-	}
-
+   
+	HoG(arr_data, nb_bins, cwidth, block_size, unsigned_dirs, clip_val,
+        img_size.data(), PyArray_STRIDE(np_arr,1)/sizeof(double),
+        oarr_data, true);
 
     Py_DECREF(arr);
     Py_INCREF(oarr);
